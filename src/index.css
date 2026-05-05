@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --color-luxury-red: #8B0000;
+  --color-luxury-red-dark: #660000;
+  --color-luxury-gold: #D4AF37;
+  --color-deep-black: #050505;
+  --color-card-bg: #121212;
+  --color-glass: rgba(18, 18, 18, 0.75);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  body {
+    -webkit-tap-highlight-color: transparent;
+    @apply bg-deep-black text-white antialiased font-sans;
+  }
+}
+
+@layer utilities {
+  .glass-effect {
+    @apply bg-glass backdrop-blur-xl border border-glass-border;
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  /* Smooth scroll container */
+  .scroll-smooth-container {
+    scroll-behavior: smooth;
+  }
+}
