@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag } from 'lucide-react';
-import { CATEGORIES, MENU_ITEMS, MenuItem } from './data';
+import { ShoppingBag, Lock } from 'lucide-react';
+import { CATEGORIES, MENU_ITEMS as INITIAL_MENU_ITEMS, MenuItem } from './data';
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartDrawer } from './components/CartDrawer';
+import { AdminPanel } from './components/AdminPanel';
 
 interface CartItem {
   item: MenuItem;
@@ -15,6 +16,24 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
+    const saved = localStorage.getItem('lumiere_menu');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return INITIAL_MENU_ITEMS;
+      }
+    }
+    return INITIAL_MENU_ITEMS;
+  });
+
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('lumiere_menu', JSON.stringify(menuItems));
+  }, [menuItems]);
 
   // Scroll visibility for navbar
   useEffect(() => {
@@ -81,12 +100,12 @@ export default function App() {
   const itemsByCategory = useMemo(() => {
     const map = new Map<string, MenuItem[]>();
     CATEGORIES.forEach(c => map.set(c.id, []));
-    MENU_ITEMS.forEach(m => {
+    menuItems.forEach(m => {
       const list = map.get(m.categoryId);
       if (list) list.push(m);
     });
     return map;
-  }, []);
+  }, [menuItems]);
 
   return (
     <div className="min-h-screen pb-32">
@@ -156,6 +175,24 @@ export default function App() {
         })}
       </main>
 
+      {/* Footer with Admin button */}
+      <footer className="mt-12 mb-32 py-8 text-center border-t border-[#1a1a1a] max-w-xl mx-auto flex justify-center">
+        <button 
+          onClick={() => {
+            const pin = prompt('الرجاء إدخال رمز المرور للوحة الإدارة:');
+            if (pin === '2990') {
+              setIsAdminOpen(true);
+            } else if (pin) {
+              alert('رمز المرور غير صحيح');
+            }
+          }}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-300 transition-colors text-sm font-sans"
+        >
+          <Lock size={14} />
+          <span>Admin</span>
+        </button>
+      </footer>
+
       {/* Floating Bottom Action Bar */}
       <AnimatePresence>
         {totalItems > 0 && (
@@ -197,6 +234,13 @@ export default function App() {
         onAdd={handleAdd}
         onRemove={handleRemove}
         onConfirmOrder={handleConfirmOrder}
+      />
+
+      <AdminPanel 
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+        menuItems={menuItems}
+        setMenuItems={setMenuItems}
       />
     </div>
   );
