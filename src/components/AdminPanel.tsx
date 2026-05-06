@@ -25,8 +25,14 @@ export function AdminPanel({ isOpen, onClose, menuItems }: AdminPanelProps) {
         try {
           const cred = await signInAnonymously(auth);
           setUser(cred.user);
+          setError(null);
         } catch (err: any) {
-          setError('فشل تأمين الجلسة: ' + err.message);
+          console.error('Auth Error:', err);
+          if (err.code === 'auth/admin-restricted-operation') {
+            setError('يجب تفعيل (Anonymous Auth) من لوحة تحكم Firebase -> Authentication لكي يعمل التعديل.');
+          } else {
+            setError('فشل تأمين الجلسة: ' + err.message);
+          }
         }
       } else {
         setUser(u);
