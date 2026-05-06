@@ -136,14 +136,26 @@ export default function App() {
       {/* Header & Floating Nav */}
       <header className={`fixed top-0 left-0 right-0 z-30 transition-all duration-300 ${isScrolled ? 'pt-2 pb-2 backdrop-blur-md bg-black/60 border-b border-white/5 shadow-xl' : 'pt-6 pb-2 bg-gradient-to-b from-black/80 to-transparent'}`}>
         <div className="max-w-2xl mx-auto px-4 flex flex-col items-center">
-          <motion.h1 
+          <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`font-serif text-white uppercase tracking-widest transition-all duration-300 ${isScrolled ? 'text-lg mb-2 opacity-80 font-bold' : 'text-3xl mb-4 font-light text-[var(--color-luxury-gold)] shadow-black drop-shadow-md'}`}
-            style={{ fontFamily: "'Playfair Display', serif" }}
+            className={`flex items-center gap-3 transition-all duration-300 ${isScrolled ? 'mb-2' : 'mb-4'}`}
           >
-            Lumière
-          </motion.h1>
+            <svg 
+              className={`transition-all duration-300 text-[var(--color-luxury-gold)] ${isScrolled ? 'w-5 h-5' : 'w-8 h-8'}`} 
+              viewBox="0 0 24 24" 
+              fill="currentColor" 
+              stroke="none"
+            >
+              <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+            </svg>
+            <h1 
+              className={`font-serif text-white uppercase tracking-widest transition-all duration-300 ${isScrolled ? 'text-lg opacity-80 font-bold' : 'text-3xl font-light text-[var(--color-luxury-gold)] shadow-black drop-shadow-md'}`}
+              style={{ fontFamily: "'Playfair Display', serif" }}
+            >
+              Lumière
+            </h1>
+          </motion.div>
 
           <nav className="flex gap-2 overflow-x-auto hide-scrollbar w-full relative">
             <div className="flex gap-2 mx-auto justify-start sm:justify-center w-full px-2">

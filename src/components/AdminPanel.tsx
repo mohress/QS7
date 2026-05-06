@@ -269,18 +269,73 @@ export function AdminPanel({ isOpen, onClose, menuItems }: AdminPanelProps) {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs text-gray-400">رابط الصورة</label>
-              <input
-                required
-                value={formData.image}
-                onChange={e => setFormData({ ...formData, image: e.target.value })}
-                dir="ltr"
-                placeholder="https://..."
-                className="bg-[#050505] border border-[#333] rounded-lg p-2 text-white text-sm focus:border-[var(--color-luxury-gold)] focus:outline-none font-sans"
-              />
-              {formData.image && (
-                <img src={formData.image} alt="Preview" className="mt-2 h-32 w-full object-cover rounded-lg border border-[#333]" onError={(e) => (e.currentTarget.style.display = 'none')} onLoad={(e) => (e.currentTarget.style.display = 'block')} />
-              )}
+              <label className="text-xs text-gray-400">صورة الطبق</label>
+              <div className="flex flex-col gap-3">
+                <div className="flex gap-2">
+                  <label className="flex-1 cursor-pointer bg-[#050505] border border-[#333] hover:border-[var(--color-luxury-gold)] rounded-lg p-3 text-white text-sm transition-colors flex items-center justify-center gap-2 border-dashed">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFormData({ ...formData, image: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <ImageIcon size={18} className="text-gray-500" />
+                    <span>اختر صورة من الجهاز</span>
+                  </label>
+                  {formData.image && (
+                    <button 
+                      type="button"
+                      onClick={() => setFormData({ ...formData, image: '' })}
+                      className="bg-red-900/20 text-red-500 p-3 rounded-lg border border-red-900/50 hover:bg-red-900/40 transition-colors"
+                      title="حذف الصورة"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <div className="h-[1px] flex-1 bg-[#222]" />
+                  <span className="text-[10px] text-gray-600 font-sans">أو استخدم رابط مباشر</span>
+                  <div className="h-[1px] flex-1 bg-[#222]" />
+                </div>
+
+                <input
+                  value={formData.image.startsWith('data:') ? '' : formData.image}
+                  onChange={e => setFormData({ ...formData, image: e.target.value })}
+                  dir="ltr"
+                  placeholder="https://..."
+                  className="bg-[#050505] border border-[#333] rounded-lg p-2 text-white text-xs focus:border-[var(--color-luxury-gold)] focus:outline-none font-sans"
+                />
+              </div>
+              
+              <AnimatePresence>
+                {formData.image && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2 overflow-hidden"
+                  >
+                    <img 
+                      src={formData.image} 
+                      alt="Preview" 
+                      className="h-32 w-full object-cover rounded-lg border border-[#333] shadow-inner" 
+                      onError={(e) => (e.currentTarget.style.display = 'none')} 
+                      onLoad={(e) => (e.currentTarget.style.display = 'block')} 
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="flex flex-col gap-1">
