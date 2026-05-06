@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn();
+    }
+
+    match /menu/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+      
+      // Validation for MenuItem
+      function isValidMenuItem(data) {
+        return data.keys().hasAll(['id', 'categoryId', 'nameAr', 'nameEn', 'descriptionAr', 'descriptionEn', 'priceIQD', 'image']) &&
+               data.id is string &&
+               data.categoryId is string &&
+               data.nameAr is string && data.nameAr.size() <= 200 &&
+               data.nameEn is string && data.nameEn.size() <= 200 &&
+               data.priceIQD is number &&
+               data.image is string;
+      }
+      
+      allow create, update: if isAdmin() && isValidMenuItem(request.resource.data);
+      allow delete: if isAdmin();
+    }
+  }
+}

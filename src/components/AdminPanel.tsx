@@ -1,17 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Edit2, Trash2, Save, Image as ImageIcon } from 'lucide-react';
-import { MenuItem, CATEGORIES } from '../data';
+import { X, Plus, Edit2, Trash2, Save, Image as ImageIcon, Database } from 'lucide-react';
+import { doc, setDoc, deleteDoc, collection, writeBatch } from 'firebase/firestore';
+import { signInAnonymously, onAuthStateChanged, signOut, User } from 'firebase/auth';
+import { db, auth } from '../firebase';
+import { MenuItem, CATEGORIES, MENU_ITEMS as INITIAL_MENU_ITEMS } from '../data';
 
 interface AdminPanelProps {
   isOpen: boolean;
   onClose: () => void;
   menuItems: MenuItem[];
-  setMenuItems: React.Dispatch<React.SetStateAction<MenuItem[]>>;
 }
 
-export function AdminPanel({ isOpen, onClose, menuItems, setMenuItems }: AdminPanelProps) {
+export function AdminPanel({ isOpen, onClose, menuItems }: AdminPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSystemLoading, setIsSystemLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+      if (isOpen && !u) {
+        try {
+          const cred = await signInAnonymously(auth);
+          setUser(cred.user);
+        } catch (err: any) {
+          setError('فشل تأمين الجلسة: ' + err.message);
+        }
+      } else {
+        setUser(u);
+      }
+      setIsSystemLoading(false);
+    });
+    return () => unsubscribe();
+  }, [isOpen]);
   
   const initialFormState: MenuItem = {
     id: '',
@@ -30,14 +53,23 @@ export function AdminPanel({ isOpen, onClose, menuItems, setMenuItems }: AdminPa
   const handleEdit = (item: MenuItem) => {
     setFormData(item);
     setEditingId(item.id);
+    setError(null);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('هل أنت متأكد من حذف هذا الطبق؟')) {
-      setMenuItems(prev => prev.filter(item => item.id !== id));
-      if (editingId === id) {
-        setEditingId(null);
-        setFormData(initialFormState);
+      setIsLoading(true);
+      setError(null);
+      try {
+        await deleteDoc(doc(db, 'menu', id));
+        if (editingId === id) {
+          setEditingId(null);
+          setFormData(initialFormState);
+        }
+      } catch (err: any) {
+        setError('خطأ في الحذف: ' + (err.code === 'permission-denied' ? 'غير مصرح لك بالقيام بهذه العملية' : err.message));
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -45,40 +77,73 @@ export function AdminPanel({ isOpen, onClose, menuItems, setMenuItems }: AdminPa
   const handleAddNew = () => {
     setFormData({ ...initialFormState, id: Date.now().toString() });
     setEditingId('new');
+    setError(null);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingId === 'new') {
-      setMenuItems(prev => [...prev, formData]);
-    } else {
-      setMenuItems(prev => prev.map(item => item.id === editingId ? formData : item));
+    setIsLoading(true);
+    setError(null);
+    try {
+      await setDoc(doc(db, 'menu', formData.id), formData);
+      setEditingId(null);
+      setFormData(initialFormState);
+    } catch (err: any) {
+      setError('خطأ في الحفظ: ' + (err.code === 'permission-denied' ? 'غير مصرح لك بالقيام بهذه العملية' : err.message));
+    } finally {
+      setIsLoading(false);
     }
-    setEditingId(null);
-    setFormData(initialFormState);
+  };
+
+  const handleInitializeMenu = async () => {
+    if (confirm('سيتم تحميل القائمة الافتراضية إلى قاعدة البيانات. هل تريد الاستمرار؟')) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const batch = writeBatch(db);
+        INITIAL_MENU_ITEMS.forEach((item) => {
+          const docRef = doc(db, 'menu', item.id);
+          batch.set(docRef, item);
+        });
+        await batch.commit();
+        alert('تم تهيئة القائمة بنجاح');
+      } catch (err: any) {
+        setError('خطأ في التهيئة: ' + (err.code === 'permission-denied' ? 'غير مصرح لك بالقيام بهذه العملية' : err.message));
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
   const handleCancel = () => {
     setEditingId(null);
     setFormData(initialFormState);
+    setError(null);
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-[100] flex flex-col md:flex-row overflow-hidden backdrop-blur-md">
+    <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col md:flex-row overflow-hidden backdrop-blur-xl">
       {/* List Section */}
       <div className="w-full md:w-1/2 h-1/2 md:h-full border-b md:border-b-0 md:border-l border-[#2a2a2a] flex flex-col bg-[#050505]">
         <div className="p-4 border-b border-[#2a2a2a] flex justify-between items-center bg-[#0a0a0a]">
-          <h2 className="text-xl font-bold text-white">إدارة قائمة الطعام</h2>
+          <div className="flex flex-col">
+            <h2 className="text-xl font-bold text-white">إدارة قائمة الطعام</h2>
+            {user && (
+              <div className="text-[8px] text-gray-500 font-sans mt-1">{user.email}</div>
+            )}
+          </div>
           <div className="flex gap-2">
-            <button
-              onClick={handleAddNew}
-              className="bg-[var(--color-luxury-red)] hover:bg-[var(--color-luxury-red-dark)] text-white p-2 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Plus size={18} />
-              <span className="hidden sm:inline">إضافة طبق جديد</span>
-            </button>
+            {user && (
+              <button
+                onClick={handleAddNew}
+                className="bg-[var(--color-luxury-red)] hover:bg-[var(--color-luxury-red-dark)] text-white p-2 rounded-lg transition-colors flex items-center gap-2"
+              >
+                <Plus size={18} />
+                <span className="hidden sm:inline">إضافة</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="bg-[#222] hover:bg-[#333] text-white p-2 rounded-lg transition-colors"
@@ -87,7 +152,29 @@ export function AdminPanel({ isOpen, onClose, menuItems, setMenuItems }: AdminPa
             </button>
           </div>
         </div>
+
+        {error && (
+          <div className="bg-red-900/30 text-red-400 p-3 text-sm border-b border-red-900/50 flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError(null)}><X size={14} /></button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 hide-scrollbar">
+          {menuItems.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center h-full gap-4 py-12">
+              <Database size={48} className="text-gray-700" />
+              <p className="text-gray-500 text-center text-sm">قاعدة البيانات فارغة</p>
+              {user && (
+                <button 
+                  onClick={handleInitializeMenu}
+                  className="bg-[#1a1a1a] border border-[#333] text-gray-300 px-4 py-2 rounded-lg hover:bg-[#222] transition-all text-xs"
+                >
+                  تحميل القائمة الافتراضية
+                </button>
+              )}
+            </div>
+          )}
           {menuItems.map(item => (
             <div key={item.id} className="bg-[#121212] border border-[#2a2a2a] p-3 rounded-xl flex items-center gap-4">
               <img src={item.image} alt={item.nameAr} className="w-16 h-16 rounded-lg object-cover bg-[#222]" />
@@ -102,12 +189,14 @@ export function AdminPanel({ isOpen, onClose, menuItems, setMenuItems }: AdminPa
                 <button
                   onClick={() => handleEdit(item)}
                   className="p-2 bg-[#222] hover:bg-[#333] text-blue-400 rounded-lg transition-colors"
+                  disabled={!user || isLoading}
                 >
                   <Edit2 size={16} />
                 </button>
                 <button
                   onClick={() => handleDelete(item.id)}
                   className="p-2 bg-[#222] hover:bg-[#333] text-red-500 rounded-lg transition-colors"
+                  disabled={!user || isLoading}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -223,15 +312,16 @@ export function AdminPanel({ isOpen, onClose, menuItems, setMenuItems }: AdminPa
             <div className="flex gap-3 mt-6 pt-4 border-t border-[#2a2a2a]">
               <button
                 type="submit"
-                className="flex-1 bg-[var(--color-luxury-red)] hover:bg-[var(--color-luxury-red-dark)] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                disabled={isLoading}
+                className="flex-1 bg-[var(--color-luxury-red)] hover:bg-[var(--color-luxury-red-dark)] text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
               >
-                <Save size={18} />
-                حفظ
+                {isLoading ? 'جاري الحفظ...' : <><Save size={18} /> حفظ</>}
               </button>
               <button
                 type="button"
                 onClick={handleCancel}
-                className="flex-1 bg-[#222] hover:bg-[#333] text-white font-bold py-3 rounded-xl transition-colors"
+                disabled={isLoading}
+                className="flex-1 bg-[#222] hover:bg-[#333] text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
               >
                 إلغاء
               </button>
@@ -239,8 +329,14 @@ export function AdminPanel({ isOpen, onClose, menuItems, setMenuItems }: AdminPa
           </form>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 opacity-50 gap-4">
-            <ImageIcon size={64} />
-            <p className="text-lg">اختر طبقاً للتعديل أو أضف طبقاً جديداً</p>
+            {isSystemLoading ? (
+               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[var(--color-luxury-gold)]" />
+            ) : (
+              <>
+                <ImageIcon size={64} />
+                <p className="text-lg text-center">اختر طبقاً للتعديل أو أضف طبقاً جديداً</p>
+              </>
+            )}
           </div>
         )}
       </div>

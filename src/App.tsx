@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, Lock } from 'lucide-react';
+import { collection, query, onSnapshot } from 'firebase/firestore';
+import { db } from './firebase';
 import { CATEGORIES, MENU_ITEMS as INITIAL_MENU_ITEMS, MenuItem } from './data';
 import { MenuItemCard } from './components/MenuItemCard';
 import { CartDrawer } from './components/CartDrawer';
@@ -17,23 +19,45 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   
-  const [menuItems, setMenuItems] = useState<MenuItem[]>(() => {
-    const saved = localStorage.getItem('lumiere_menu');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return INITIAL_MENU_ITEMS;
-      }
-    }
-    return INITIAL_MENU_ITEMS;
-  });
-
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [showPinEntry, setShowPinEntry] = useState(false);
+  const [pin, setPin] = useState('');
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // الرمز الافتراضي المكون من 7 أحرف وأرقام
+    // يمكنك تغييره هنا أو ربطه بقاعدة بيانات لاحقاً
+    if (pin.toUpperCase() === 'LMR8899') {
+      setIsAdminOpen(true);
+      setShowPinEntry(false);
+      setPin('');
+    } else {
+      alert('الرمز السري غير صحيح');
+      setPin('');
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('lumiere_menu', JSON.stringify(menuItems));
-  }, [menuItems]);
+    const q = query(collection(db, 'menu'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items: MenuItem[] = [];
+      snapshot.forEach((doc) => {
+        items.push(doc.data() as MenuItem);
+      });
+      if (items.length === 0 && INITIAL_MENU_ITEMS.length > 0) {
+        // Fallback or initial data loading logic if needed, but usually we just wait
+        setMenuItems(items);
+      } else {
+        setMenuItems(items);
+      }
+    }, (error) => {
+      console.error('Error fetching menu:', error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Removed localStorage effect as it's now handled by Firestore
 
   // Scroll visibility for navbar
   useEffect(() => {
@@ -176,22 +200,68 @@ export default function App() {
       </main>
 
       {/* Footer with Admin button */}
-      <footer className="mt-12 mb-32 py-8 text-center border-t border-[#1a1a1a] max-w-xl mx-auto flex justify-center">
+      <footer className="mt-12 mb-32 py-8 text-center border-t border-[#1a1a1a] max-w-xl mx-auto flex flex-col items-center gap-4">
         <button 
-          onClick={() => {
-            const pin = prompt('الرجاء إدخال رمز المرور للوحة الإدارة:');
-            if (pin === '2990') {
-              setIsAdminOpen(true);
-            } else if (pin) {
-              alert('رمز المرور غير صحيح');
-            }
-          }}
+          onClick={() => setShowPinEntry(true)}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-300 transition-colors text-sm font-sans"
         >
           <Lock size={14} />
           <span>Admin</span>
         </button>
+        <p className="text-[10px] text-gray-800 font-sans tracking-widest uppercase">Lumière Dining &copy; 2024</p>
       </footer>
+
+      {/* PIN Entry Modal */}
+      <AnimatePresence>
+        {showPinEntry && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[110] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#111] border border-[#222] p-8 rounded-3xl w-full max-w-xs text-center shadow-2xl"
+            >
+              <Lock className="mx-auto mb-4 text-[var(--color-luxury-gold)]" size={32} />
+              <h3 className="text-xl font-bold text-white mb-6">لوحة الإدارة</h3>
+              <form onSubmit={handlePinSubmit} className="flex flex-col gap-4">
+                <input
+                  autoFocus
+                  type="text"
+                  maxLength={7}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value)}
+                  placeholder="الرمز السري"
+                  className="bg-[#050505] border border-[#333] text-white text-center text-2xl tracking-[0.2em] py-3 rounded-xl focus:border-[var(--color-luxury-gold)] focus:outline-none uppercase"
+                  dir="ltr"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-[var(--color-luxury-red)] text-white font-bold py-3 rounded-xl hover:bg-[var(--color-luxury-red-dark)] transition-colors"
+                  >
+                    دخول
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPinEntry(false);
+                      setPin('');
+                    }}
+                    className="px-4 bg-[#222] text-white rounded-xl hover:bg-[#333] transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Bottom Action Bar */}
       <AnimatePresence>
@@ -240,7 +310,6 @@ export default function App() {
         isOpen={isAdminOpen}
         onClose={() => setIsAdminOpen(false)}
         menuItems={menuItems}
-        setMenuItems={setMenuItems}
       />
     </div>
   );

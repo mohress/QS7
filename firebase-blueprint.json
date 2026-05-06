@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "MenuItem": {
+      "title": "MenuItem",
+      "description": "A food or drink item in the restaurant menu",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "nameAr": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "descriptionAr": { "type": "string" },
+        "descriptionEn": { "type": "string" },
+        "priceIQD": { "type": "number" },
+        "image": { "type": "string" },
+        "isOffer": { "type": "boolean" }
+      },
+      "required": ["id", "categoryId", "nameAr", "nameEn", "descriptionAr", "descriptionEn", "priceIQD", "image"]
+    }
+  },
+  "firestore": {
+    "/menu": {
+      "schema": "MenuItem",
+      "description": "Collection of all menu items"
+    }
+  }
+}
