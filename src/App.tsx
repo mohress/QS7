@@ -142,12 +142,11 @@ export default function App() {
             className={`flex items-center gap-3 transition-all duration-300 ${isScrolled ? 'mb-2' : 'mb-4'}`}
           >
             <svg 
-              className={`transition-all duration-300 text-[var(--color-luxury-gold)] ${isScrolled ? 'w-5 h-5' : 'w-8 h-8'}`} 
+              className={`transition-all duration-300 ${isScrolled ? 'w-5 h-5' : 'w-8 h-8'}`} 
               viewBox="0 0 24 24" 
-              fill="currentColor" 
-              stroke="none"
             >
-              <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+              <circle cx="12" cy="12" r="12" fill="var(--color-luxury-red)" />
+              <path d="M12 3L14.2 9.8L21 12L14.2 14.2L12 21L9.8 14.2L3 12L9.8 9.8L12 3Z" fill="var(--color-luxury-gold)" />
             </svg>
             <h1 
               className={`font-serif text-white uppercase tracking-widest transition-all duration-300 ${isScrolled ? 'text-lg opacity-80 font-bold' : 'text-3xl font-light text-[var(--color-luxury-gold)] shadow-black drop-shadow-md'}`}
